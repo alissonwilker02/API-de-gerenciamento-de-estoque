@@ -27,3 +27,12 @@ SessaoLocal = sessionmaker(
 )
 
 Base = declarative_base()
+
+
+def obter_sessao():
+    sessao = SessaoLocal()
+
+    try:
+        yield sessao
+    finally:
+        sessao.close()
