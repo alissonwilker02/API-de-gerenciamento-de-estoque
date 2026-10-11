@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from app.rotas.categorias import router as categorias_router
+from app.rotas.fornecedores import router as fornecedores_router
 
 app = FastAPI(
     title="API de Gerenciamento de Estoque",
@@ -8,6 +9,8 @@ app = FastAPI(
 )
 
 app.include_router(categorias_router)
+
+app.include_router(fornecedores_router)
 
 
 @app.get("/")
