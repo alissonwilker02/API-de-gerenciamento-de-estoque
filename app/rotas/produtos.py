@@ -21,6 +21,24 @@ def listar_produtos(
     return produtos
 
 
+@router.get(
+    "/estoque-baixo",
+    response_model=list[ProdutoResposta],
+)
+def listar_produtos_estoque_baixo(
+    sessao: Session = Depends(obter_sessao),
+):
+    produtos = (
+        sessao.query(Produto)
+        .filter(
+            Produto.quantidade_estoque <= Produto.estoque_minimo
+        )
+        .all()
+    )
+
+    return produtos
+
+
 @router.post(
     "/",
     response_model=ProdutoResposta,
