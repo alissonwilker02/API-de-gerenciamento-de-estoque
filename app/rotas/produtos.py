@@ -1,10 +1,17 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.banco_de_dados import obter_sessao
+from app.modelos.categoria import Categoria
+from app.modelos.fornecedor import Fornecedor
 from app.modelos.produto import Produto
-from app.esquemas.produto import ProdutoCriacao, ProdutoResposta
+from app.esquemas.produto import (
+    ProdutoAtualizacao,
+    ProdutoCriacao,
+    ProdutoResposta,
+)
 
 
 router = APIRouter(
@@ -13,12 +20,37 @@ router = APIRouter(
 )
 
 
+def validar_relacionamentos(
+    sessao: Session,
+    categoria_id: int,
+    fornecedor_id: int,
+) -> None:
+    categoria = sessao.query(Categoria).filter(
+        Categoria.id == categoria_id
+    ).first()
+
+    if categoria is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Categoria não encontrada.",
+        )
+
+    fornecedor = sessao.query(Fornecedor).filter(
+        Fornecedor.id == fornecedor_id
+    ).first()
+
+    if fornecedor is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Fornecedor não encontrado.",
+        )
+
+
 @router.get("/", response_model=list[ProdutoResposta])
 def listar_produtos(
     sessao: Session = Depends(obter_sessao),
 ):
-    produtos = sessao.query(Produto).all()
-    return produtos
+    return sessao.query(Produto).all()
 
 
 @router.get(
@@ -28,15 +60,13 @@ def listar_produtos(
 def listar_produtos_estoque_baixo(
     sessao: Session = Depends(obter_sessao),
 ):
-    produtos = (
+    return (
         sessao.query(Produto)
         .filter(
             Produto.quantidade_estoque <= Produto.estoque_minimo
         )
         .all()
     )
-
-    return produtos
 
 
 @router.post(
@@ -48,19 +78,44 @@ def criar_produto(
     dados: ProdutoCriacao,
     sessao: Session = Depends(obter_sessao),
 ):
+    validar_relacionamentos(
+        sessao,
+        dados.categoria_id,
+        dados.fornecedor_id,
+    )
+
+    sku_existente = sessao.query(Produto).filter(
+        Produto.sku == dados.sku
+    ).first()
+
+    if sku_existente is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Já existe um produto com esse SKU.",
+        )
+
     produto = Produto(
         nome=dados.nome,
+        sku=dados.sku,
         descricao=dados.descricao,
-        preco=dados.preco,
-        quantidade_estoque=dados.quantidade_estoque,
+        preco_custo=dados.preco_custo,
+        preco_venda=dados.preco_venda,
+        quantidade_estoque=0,
         estoque_minimo=dados.estoque_minimo,
         categoria_id=dados.categoria_id,
         fornecedor_id=dados.fornecedor_id,
     )
 
-    sessao.add(produto)
-    sessao.commit()
-    sessao.refresh(produto)
+    try:
+        sessao.add(produto)
+        sessao.commit()
+        sessao.refresh(produto)
+    except IntegrityError:
+        sessao.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Não foi possível cadastrar o produto devido a um conflito de dados.",
+        )
 
     return produto
 
@@ -79,8 +134,8 @@ def buscar_produto(
 
     if produto is None:
         raise HTTPException(
-            status_code=404,
-            detail="Produto não encontrado",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Produto não encontrado.",
         )
 
     return produto
@@ -92,7 +147,7 @@ def buscar_produto(
 )
 def atualizar_produto(
     produto_id: int,
-    dados: ProdutoCriacao,
+    dados: ProdutoAtualizacao,
     sessao: Session = Depends(obter_sessao),
 ):
     produto = sessao.query(Produto).filter(
@@ -101,20 +156,45 @@ def atualizar_produto(
 
     if produto is None:
         raise HTTPException(
-            status_code=404,
-            detail="Produto não encontrado",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Produto não encontrado.",
+        )
+
+    validar_relacionamentos(
+        sessao,
+        dados.categoria_id,
+        dados.fornecedor_id,
+    )
+
+    sku_existente = sessao.query(Produto).filter(
+        Produto.sku == dados.sku,
+        Produto.id != produto_id,
+    ).first()
+
+    if sku_existente is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Já existe outro produto com esse SKU.",
         )
 
     produto.nome = dados.nome
+    produto.sku = dados.sku
     produto.descricao = dados.descricao
-    produto.preco = dados.preco
-    produto.quantidade_estoque = dados.quantidade_estoque
+    produto.preco_custo = dados.preco_custo
+    produto.preco_venda = dados.preco_venda
     produto.estoque_minimo = dados.estoque_minimo
     produto.categoria_id = dados.categoria_id
     produto.fornecedor_id = dados.fornecedor_id
 
-    sessao.commit()
-    sessao.refresh(produto)
+    try:
+        sessao.commit()
+        sessao.refresh(produto)
+    except IntegrityError:
+        sessao.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Não foi possível atualizar o produto devido a um conflito de dados.",
+        )
 
     return produto
 
@@ -134,10 +214,18 @@ def excluir_produto(
     if produto is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Produto não encontrado",
+            detail="Produto não encontrado.",
         )
 
     sessao.delete(produto)
-    sessao.commit()
+
+    try:
+        sessao.commit()
+    except IntegrityError:
+        sessao.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Não é possível excluir o produto porque existem movimentações associadas a ele.",
+        )
 
     return None

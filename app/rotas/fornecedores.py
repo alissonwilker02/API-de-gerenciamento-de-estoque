@@ -1,5 +1,5 @@
-
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.banco_de_dados import obter_sessao
@@ -21,6 +21,7 @@ def listar_fornecedores(
     fornecedores = sessao.query(Fornecedor).all()
     return fornecedores
 
+
 @router.post(
     "/",
     response_model=FornecedorResposta,
@@ -30,17 +31,36 @@ def criar_fornecedor(
     dados: FornecedorCriacao,
     sessao: Session = Depends(obter_sessao),
 ):
+    fornecedor_existente = sessao.query(Fornecedor).filter(
+        Fornecedor.cnpj == dados.cnpj
+    ).first()
+
+    if fornecedor_existente is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Já existe um fornecedor com esse CNPJ.",
+        )
+
     fornecedor = Fornecedor(
         nome=dados.nome,
+        cnpj=dados.cnpj,
         email=dados.email,
         telefone=dados.telefone,
     )
 
-    sessao.add(fornecedor)
-    sessao.commit()
-    sessao.refresh(fornecedor)
+    try:
+        sessao.add(fornecedor)
+        sessao.commit()
+        sessao.refresh(fornecedor)
+    except IntegrityError:
+        sessao.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Não foi possível cadastrar o fornecedor devido a um conflito de dados.",
+        )
 
     return fornecedor
+
 
 
 @router.get(
@@ -64,6 +84,7 @@ def buscar_fornecedor(
     return fornecedor
 
 
+
 @router.put(
     "/{fornecedor_id}",
     response_model=FornecedorResposta,
@@ -79,18 +100,39 @@ def atualizar_fornecedor(
 
     if fornecedor is None:
         raise HTTPException(
-            status_code=404,
-            detail="Fornecedor não encontrado",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Fornecedor não encontrado.",
+        )
+
+    cnpj_existente = sessao.query(Fornecedor).filter(
+        Fornecedor.cnpj == dados.cnpj,
+        Fornecedor.id != fornecedor_id,
+    ).first()
+
+    if cnpj_existente is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Já existe outro fornecedor com esse CNPJ.",
         )
 
     fornecedor.nome = dados.nome
+    fornecedor.cnpj = dados.cnpj
     fornecedor.email = dados.email
     fornecedor.telefone = dados.telefone
 
-    sessao.commit()
-    sessao.refresh(fornecedor)
+    try:
+        sessao.commit()
+        sessao.refresh(fornecedor)
+    except IntegrityError:
+        sessao.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Não foi possível atualizar o fornecedor devido a um conflito de dados.",
+        )
 
     return fornecedor
+
+
 
 
 @router.delete(
@@ -107,9 +149,18 @@ def excluir_fornecedor(
 
     if fornecedor is None:
         raise HTTPException(
-            status_code=404,
-            detail="Fornecedor não encontrado",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Fornecedor não encontrado.",
         )
 
-    sessao.delete(fornecedor)
-    sessao.commit()
+    try:
+        sessao.delete(fornecedor)
+        sessao.commit()
+    except IntegrityError:
+        sessao.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Não é possível excluir o fornecedor porque existem produtos associados a ele.",
+        )
+
+    return None
