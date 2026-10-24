@@ -48,6 +48,7 @@ def criar_fornecedor(
         telefone=dados.telefone,
     )
 
+    # O rollback mantém a sessão utilizável quando uma restrição do banco falha.
     try:
         sessao.add(fornecedor)
         sessao.commit()
@@ -77,8 +78,8 @@ def buscar_fornecedor(
 
     if fornecedor is None:
         raise HTTPException(
-            status_code=404,
-            detail="Fornecedor não encontrado",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Fornecedor não encontrado.",
         )
 
     return fornecedor
@@ -153,6 +154,7 @@ def excluir_fornecedor(
             detail="Fornecedor não encontrado.",
         )
 
+    # Produtos vinculados impedem a exclusão para preservar suas referências.
     try:
         sessao.delete(fornecedor)
         sessao.commit()

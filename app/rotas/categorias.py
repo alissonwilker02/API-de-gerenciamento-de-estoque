@@ -3,10 +3,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.banco_de_dados import obter_sessao
-from app.modelos.categoria import Categoria
 from app.esquemas.categoria import CategoriaCriacao, CategoriaResposta
-
-
+from app.modelos.categoria import Categoria
 
 router = APIRouter(
     prefix="/categorias",
@@ -64,11 +62,9 @@ def buscar_categoria(
     ).first()
 
     if categoria is None:
-        from fastapi import HTTPException
-
         raise HTTPException(
-            status_code=404,
-            detail="Categoria não encontrada",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Categoria não encontrada.",
         )
 
     return categoria
@@ -138,6 +134,7 @@ def excluir_categoria(
             detail="Categoria não encontrada.",
         )
 
+    # A chave estrangeira impede excluir categorias ainda usadas por produtos.
     try:
         sessao.delete(categoria)
         sessao.commit()

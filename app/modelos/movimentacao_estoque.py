@@ -6,6 +6,8 @@ from app.banco_de_dados import Base
 
 
 class MovimentacaoEstoque(Base):
+    """Registro de auditoria criado e consultado, sem edição ou exclusão via API."""
+
     __tablename__ = "movimentacoes_estoque"
 
     id = Column(Integer, primary_key=True, index=True)

@@ -276,7 +276,24 @@ Se o fornecedor informado não existir, a API retorna `404`. Caso a saída solic
 
 ## Tratamento de erros
 
-A API utiliza códigos HTTP para comunicar o resultado das operações. Entre os códigos utilizados estão:
+A API retorna os erros no formato padronizado abaixo, sem expor detalhes
+internos ou stack traces:
+
+```json
+{
+  "erro": {
+    "codigo": 404,
+    "mensagem": "Produto não encontrado."
+  }
+}
+```
+
+O campo `codigo` corresponde ao status HTTP. Validações de entrada retornam
+`400` (inclusive na documentação OpenAPI); recursos inexistentes retornam
+`404`, conflitos de negócio retornam `409` e falhas inesperadas retornam
+`500`. Erros de rotas inexistentes também seguem esse formato.
+
+Entre os códigos utilizados estão:
 
 | Código | Significado |
 |---|---|
@@ -286,10 +303,9 @@ A API utiliza códigos HTTP para comunicar o resultado das operações. Entre os
 | 400 | Operação inválida segundo uma regra de negócio |
 | 404 | Recurso não encontrado |
 | 409 | Conflito com dados ou relacionamentos existentes |
-| 422 | Dados de entrada inválidos |
 | 500 | Erro interno inesperado |
 
-O formato e a mensagem retornados dependem do tipo de erro e do tratamento configurado na aplicação.
+As mensagens explicam a falha sem incluir informações sensíveis do servidor.
 
 ## Testes automatizados
 
@@ -307,7 +323,8 @@ Para medir a cobertura do código:
 python -m pytest --cov=app --cov-report=term-missing -v
 ```
 
-A suíte atual possui 67 testes aprovados e apresentou 94% de cobertura na última execução registrada.
+A suíte atual possui 69 testes aprovados e 93% de cobertura, medidos com
+`pytest-cov`.
 
 Os testes utilizam uma configuração de banco isolada para evitar dependência dos dados do PostgreSQL de desenvolvimento.
 
@@ -316,4 +333,3 @@ Os testes utilizam uma configuração de banco isolada para evitar dependência 
 O projeto utiliza Git e GitHub para controle de versão e acompanhamento das alterações.
 
 Repositório: https://github.com/alissonwilker02/API-de-gerenciamento-de-estoque
-

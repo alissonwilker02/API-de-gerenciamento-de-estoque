@@ -1386,3 +1386,29 @@ def test_criar_categoria_sem_descricao(cliente):
     assert resposta.status_code == 201
     assert resposta.json()["nome"] == "Categoria Sem Descricao"
     assert resposta.json()["descricao"] is None
+
+
+def test_rota_inexistente_retorna_erro_padronizado(cliente):
+    resposta = cliente.get("/rota-inexistente")
+
+    assert resposta.status_code == 404
+    assert resposta.json() == {
+        "erro": {
+            "codigo": 404,
+            "mensagem": "Rota não encontrada.",
+        }
+    }
+
+
+def test_openapi_documenta_validacao_com_status_400(cliente):
+    resposta = cliente.post("/categorias/", json={})
+    esquema = cliente.get("/openapi.json").json()
+    respostas = esquema["paths"]["/categorias/"]["post"]["responses"]
+
+    assert resposta.status_code == 400
+    assert resposta.json()["erro"]["codigo"] == 400
+    assert "400" in respostas
+    assert "422" not in respostas
+    assert respostas["400"]["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/ErroResposta"
+    }

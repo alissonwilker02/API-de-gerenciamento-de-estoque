@@ -25,6 +25,7 @@ def validar_relacionamentos(
     categoria_id: int,
     fornecedor_id: int,
 ) -> None:
+    """Garante que as referências existem antes de criar ou alterar produto."""
     categoria = sessao.query(Categoria).filter(
         Categoria.id == categoria_id
     ).first()
@@ -60,6 +61,7 @@ def listar_produtos(
 def listar_produtos_estoque_baixo(
     sessao: Session = Depends(obter_sessao),
 ):
+    # Inclui produtos no limite mínimo, além dos que já estão abaixo dele.
     return (
         sessao.query(Produto)
         .filter(
@@ -100,6 +102,7 @@ def criar_produto(
         descricao=dados.descricao,
         preco_custo=dados.preco_custo,
         preco_venda=dados.preco_venda,
+        # O saldo inicial só pode ser alterado por movimentações registradas.
         quantidade_estoque=0,
         estoque_minimo=dados.estoque_minimo,
         categoria_id=dados.categoria_id,
@@ -177,6 +180,7 @@ def atualizar_produto(
             detail="Já existe outro produto com esse SKU.",
         )
 
+    # A atualização cadastral não altera o saldo de estoque do produto.
     produto.nome = dados.nome
     produto.sku = dados.sku
     produto.descricao = dados.descricao

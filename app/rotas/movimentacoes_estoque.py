@@ -51,6 +51,7 @@ def criar_movimentacao(
     else:
         produto.quantidade_estoque += dados.quantidade
 
+    # Saldo e histórico são persistidos juntos na mesma transação.
     movimentacao = MovimentacaoEstoque(
         produto_id=dados.produto_id,
         tipo=dados.tipo,
@@ -102,7 +103,7 @@ def listar_movimentacoes(
             MovimentacaoEstoque.data_movimentacao >= inicio
         )
 
-    # Inclui todo o dia final no período pesquisado.
+    # Limite exclusivo no dia seguinte inclui qualquer horário da data final.
     if data_fim is not None:
         dia_seguinte = datetime.combine(
             data_fim + timedelta(days=1),
