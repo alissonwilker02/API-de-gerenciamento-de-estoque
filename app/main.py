@@ -1,6 +1,8 @@
+
 import logging
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.rotas.categorias import router as categorias_router
@@ -10,7 +12,6 @@ from app.rotas.movimentacoes_estoque import (
     router as movimentacoes_estoque_router,
 )
 
-# Registra erros inesperados no terminal do servidor.
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
@@ -23,11 +24,56 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(HTTPException)
+async def tratar_erro_http(
+    request: Request,
+    exc: HTTPException,
+) -> JSONResponse:
+    """Padroniza erros HTTP mantendo o status original."""
+    mensagem = (
+        exc.detail
+        if isinstance(exc.detail, str)
+        else "A requisição não pôde ser processada."
+    )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "erro": {
+                "codigo": exc.status_code,
+                "mensagem": mensagem,
+            }
+        },
+        headers=exc.headers,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def tratar_erro_validacao(
+    request: Request,
+    exc: RequestValidationError,
+) -> JSONResponse:
+    """Padroniza erros de validação dos dados recebidos."""
+    return JSONResponse(
+        status_code=400,
+        content={
+            "erro": {
+                "codigo": 400,
+                "mensagem": (
+                    "Dados inválidos na requisição. "
+                    "Verifique os campos enviados."
+                ),
+            }
+        },
+    )
+
+
 @app.exception_handler(Exception)
 async def tratar_erro_interno(
     request: Request,
     exc: Exception,
 ) -> JSONResponse:
+    """Registra erros inesperados sem expor detalhes internos."""
     logger.error(
         "Erro inesperado ao processar %s %s",
         request.method,

@@ -102,7 +102,7 @@ def test_cnpj_invalido(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_cnpj_duplicado(cliente):
@@ -445,7 +445,7 @@ def test_filtro_por_tipo_invalido(cliente):
         params={"tipo": "devolucao"},
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_filtro_por_periodo_sem_resultados(cliente):
@@ -497,7 +497,7 @@ def test_movimentacao_com_quantidade_zero(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
     # O estoque deve continuar zerado.
     produto_atualizado = cliente.get(
@@ -517,7 +517,7 @@ def test_movimentacao_com_quantidade_negativa(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 # -------------------------
@@ -806,7 +806,7 @@ def test_atualizar_produto_inexistente(cliente):
     )
 
     assert resposta.status_code == 404
-    assert resposta.json()["detail"] == "Produto não encontrado."
+    assert resposta.json()["erro"]["mensagem"] == "Produto não encontrado."
 
 
 def test_atualizar_produto_com_sku_duplicado(cliente):
@@ -844,7 +844,7 @@ def test_atualizar_produto_com_sku_duplicado(cliente):
     )
 
     assert resposta.status_code == 409
-    assert resposta.json()["detail"] == (
+    assert resposta.json()["erro"]["mensagem"] == (
         "Já existe outro produto com esse SKU."
     )
 
@@ -878,7 +878,7 @@ def test_excluir_produto_inexistente(cliente):
     resposta = cliente.delete("/produtos/9999")
 
     assert resposta.status_code == 404
-    assert resposta.json()["detail"] == "Produto não encontrado."
+    assert resposta.json()["erro"]["mensagem"] == "Produto não encontrado."
 
 
 def test_excluir_produto_com_movimentacao_associada(cliente):
@@ -904,7 +904,7 @@ def test_excluir_produto_com_movimentacao_associada(cliente):
 
     assert resposta.status_code == 409
 
-    assert resposta.json()["detail"] == (
+    assert resposta.json()["erro"]["mensagem"] == (
         "Não é possível excluir o produto porque existem movimentações associadas a ele."
     )
 
@@ -931,7 +931,7 @@ def test_criar_produto_com_nome_vazio(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_produto_com_sku_vazio(cliente):
@@ -951,7 +951,7 @@ def test_criar_produto_com_sku_vazio(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_produto_com_preco_custo_zero(cliente):
@@ -971,7 +971,7 @@ def test_criar_produto_com_preco_custo_zero(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_produto_com_preco_venda_negativo(cliente):
@@ -991,7 +991,7 @@ def test_criar_produto_com_preco_venda_negativo(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_produto_com_estoque_minimo_negativo(cliente):
@@ -1011,7 +1011,7 @@ def test_criar_produto_com_estoque_minimo_negativo(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_produto_com_categoria_id_zero(cliente):
@@ -1030,7 +1030,7 @@ def test_criar_produto_com_categoria_id_zero(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_produto_com_fornecedor_id_negativo(cliente):
@@ -1049,7 +1049,7 @@ def test_criar_produto_com_fornecedor_id_negativo(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_produto_com_campo_nao_permitido(cliente):
@@ -1070,7 +1070,7 @@ def test_criar_produto_com_campo_nao_permitido(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_produto_com_preco_com_mais_de_duas_casas_decimais(cliente):
@@ -1090,7 +1090,7 @@ def test_criar_produto_com_preco_com_mais_de_duas_casas_decimais(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_produto_com_preco_acima_do_limite(cliente):
@@ -1110,7 +1110,7 @@ def test_criar_produto_com_preco_acima_do_limite(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_atualizar_produto_com_preco_invalido(cliente):
@@ -1137,7 +1137,7 @@ def test_atualizar_produto_com_preco_invalido(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
     # A atualização inválida não deve alterar o produto.
     consulta = cliente.get(f"/produtos/{produto['id']}")
@@ -1158,7 +1158,7 @@ def test_movimentacao_com_produto_inexistente(cliente):
     )
 
     assert resposta.status_code == 404
-    assert resposta.json()["detail"] == "Produto não encontrado"
+    assert resposta.json()["erro"]["mensagem"] == "Produto não encontrado"
 
 
 def test_movimentacao_com_tipo_invalido(cliente):
@@ -1179,7 +1179,7 @@ def test_movimentacao_com_tipo_invalido(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_movimentacao_com_produto_id_zero(cliente):
@@ -1192,7 +1192,7 @@ def test_movimentacao_com_produto_id_zero(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_movimentacao_com_campo_extra(cliente):
@@ -1214,7 +1214,7 @@ def test_movimentacao_com_campo_extra(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
     # A requisição inválida não deve alterar o estoque.
     consulta = cliente.get(f"/produtos/{produto['id']}")
@@ -1242,7 +1242,7 @@ def test_movimentacao_com_observacao_acima_do_limite(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
     # Confirma que nenhuma movimentação inválida foi registrada.
     movimentacoes = cliente.get(
@@ -1265,7 +1265,7 @@ def test_criar_fornecedor_com_nome_vazio(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_fornecedor_com_cnpj_com_menos_de_14_digitos(cliente):
@@ -1279,7 +1279,7 @@ def test_criar_fornecedor_com_cnpj_com_menos_de_14_digitos(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_fornecedor_com_email_invalido(cliente):
@@ -1293,7 +1293,7 @@ def test_criar_fornecedor_com_email_invalido(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_fornecedor_com_campo_extra(cliente):
@@ -1308,7 +1308,7 @@ def test_criar_fornecedor_com_campo_extra(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_fornecedor_com_cnpj_formatado(cliente):
@@ -1335,7 +1335,7 @@ def test_criar_categoria_com_nome_vazio(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_categoria_com_nome_acima_do_limite(cliente):
@@ -1347,7 +1347,7 @@ def test_criar_categoria_com_nome_acima_do_limite(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_categoria_com_descricao_acima_do_limite(cliente):
@@ -1359,7 +1359,7 @@ def test_criar_categoria_com_descricao_acima_do_limite(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_categoria_com_campo_extra(cliente):
@@ -1372,7 +1372,7 @@ def test_criar_categoria_com_campo_extra(cliente):
         },
     )
 
-    assert resposta.status_code == 422
+    assert resposta.status_code == 400
 
 
 def test_criar_categoria_sem_descricao(cliente):
