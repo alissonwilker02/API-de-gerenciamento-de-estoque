@@ -9,6 +9,7 @@ from app.esquemas.movimentacao_estoque import (
     MovimentacaoEstoqueCriacao,
     MovimentacaoEstoqueResposta,
 )
+from app.modelos.fornecedor import Fornecedor
 from app.modelos.movimentacao_estoque import MovimentacaoEstoque
 from app.modelos.produto import Produto
 
@@ -27,9 +28,11 @@ def criar_movimentacao(
     dados: MovimentacaoEstoqueCriacao,
     sessao: Session = Depends(obter_sessao),
 ):
-    produto = sessao.query(Produto).filter(
-        Produto.id == dados.produto_id
-    ).first()
+    produto = (
+        sessao.query(Produto)
+        .filter(Produto.id == dados.produto_id)
+        .first()
+    )
 
     if produto is None:
         raise HTTPException(
@@ -45,7 +48,6 @@ def criar_movimentacao(
             )
 
         produto.quantidade_estoque -= dados.quantidade
-
     else:
         produto.quantidade_estoque += dados.quantidade
 
@@ -62,18 +64,37 @@ def criar_movimentacao(
 
     return movimentacao
 
+
+
 @router.get(
     "/",
     response_model=list[MovimentacaoEstoqueResposta],
 )
 def listar_movimentacoes(
     produto_id: int | None = None,
+    fornecedor_id: int | None = None,
     tipo: Literal["entrada", "saida"] | None = None,
-    sessao: Session = Depends(obter_sessao),
     data_inicio: date | None = None,
     data_fim: date | None = None,
+    sessao: Session = Depends(obter_sessao),
 ):
     consulta = sessao.query(MovimentacaoEstoque)
+
+    # Valida se o fornecedor informado existe.
+    if fornecedor_id is not None:
+        fornecedor = (
+            sessao.query(Fornecedor)
+            .filter(Fornecedor.id == fornecedor_id)
+            .first()
+        )
+
+        if fornecedor is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Fornecedor não encontrado",
+            )
+
+    # Filtra pela data inicial.
     if data_inicio is not None:
         inicio = datetime.combine(data_inicio, time.min)
 
@@ -81,6 +102,7 @@ def listar_movimentacoes(
             MovimentacaoEstoque.data_movimentacao >= inicio
         )
 
+    # Inclui todo o dia final no período pesquisado.
     if data_fim is not None:
         dia_seguinte = datetime.combine(
             data_fim + timedelta(days=1),
@@ -91,16 +113,28 @@ def listar_movimentacoes(
             MovimentacaoEstoque.data_movimentacao < dia_seguinte
         )
 
+    # Filtra pelo produto.
     if produto_id is not None:
         consulta = consulta.filter(
             MovimentacaoEstoque.produto_id == produto_id
         )
 
+    # Filtra pelo fornecedor do produto associado.
+    if fornecedor_id is not None:
+        consulta = consulta.join(
+            Produto,
+            MovimentacaoEstoque.produto_id == Produto.id,
+        ).filter(
+            Produto.fornecedor_id == fornecedor_id
+        )
+
+    # Filtra pelo tipo de movimentação.
     if tipo is not None:
         consulta = consulta.filter(
             MovimentacaoEstoque.tipo == tipo
         )
 
+    # Retorna as movimentações mais recentes primeiro.
     movimentacoes = (
         consulta
         .order_by(MovimentacaoEstoque.data_movimentacao.desc())
